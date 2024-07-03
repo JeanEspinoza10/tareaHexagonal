@@ -1,6 +1,5 @@
 package com.api.ms_espinoza_hexagonal.infraestructure.adapters;
 
-import com.api.ms_espinoza_hexagonal.domain.aggregates.dto.EmpleadoDTO;
 import com.api.ms_espinoza_hexagonal.domain.aggregates.request.RequestEmpleado;
 import com.api.ms_espinoza_hexagonal.domain.aggregates.response.ResponseBase;
 import com.api.ms_espinoza_hexagonal.domain.aggregates.response.ResponseReniec;
@@ -15,7 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.sql.Timestamp;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -30,18 +29,45 @@ public class EmpleadoAdapter implements EmpleadoServiceOut {
     private String tokenApi;
 
     @Override
-    public EmpleadoDTO crearEmpleadoOut(RequestEmpleado empleado) {
-        EmpleadoEntity empleadoEntity = getEntityRestTemplate(empleado);
+    public ResponseBase crearEmpleadoOut(RequestEmpleado empleado) {
+        String documento = empleado.getNumeroDocumento();
+        if(documento != null && !documento.isEmpty()){
+            boolean exist = empleadoRepository.existsByNumDoc(empleado.getNumeroDocumento());
+            if(exist){
+                return new ResponseBase(200,"Existe un empleado con el documento enviado",Optional.empty());
+            }else{
+                EmpleadoEntity empleadoEntity = getEntityRestTemplate(empleado);
+                if(empleadoEntity !=null){
+                    empleadoEntity.setEdad(empleado.getEdad());
+                    empleadoEntity.setDepartamento(empleado.getDepartamento());
+                    empleadoEntity.setSalario(empleado.getSalario());
+                    empleadoEntity.setTelefono(empleado.getTelefono());
+                    empleadoEntity.setCorreo(empleado.getCorreo());
+                    empleadoEntity.setEdad(empleado.getEdad());
+                    empleadoEntity.setEstado(true);
+                    empleadoEntity.setDireccion(empleado.getDireccion());
+                    empleadoRepository.save(empleadoEntity);
+                    return  new ResponseBase(200,"Se realizo el grabado correctamente",Optional.empty());
+                }else{
+                    return  new ResponseBase(400,"Error en la búsqueda en RENIEC",Optional.empty());
+                }
+            }
+        }
+        return new ResponseBase(400, "Error no se encontro el documento",Optional.empty() );
+    }
 
-        if(empleadoEntity !=null){
-            return empleadoMapper.mapToDto(empleadoRepository.save(empleadoEntity));
+    @Override
+    public ResponseBase buscarEmpleadoOut(String documento) {
+        String documentoQuery = documento;
+        if(documentoQuery != null && !documentoQuery.isEmpty()){
+            Optional<EmpleadoEntity> busqueda  =  empleadoRepository.findByNumDoc(documento);
+            if(busqueda.isPresent()){
+                return new ResponseBase(200, "Se encontro datos",Optional.of(busqueda.get()));
+            }else {
+                return new ResponseBase(200,"No hay datos", busqueda.empty());
+            }
         }
-        else{
-            ResponseBase responseBase = new ResponseBase();
-            responseBase.setCode(440);
-            responseBase.setMessage("Errror");
-            return empleadoMapper.mapToDtoResponseBase(responseBase);
-        }
+        return new ResponseBase(400,"Error en envio de params",Optional.empty());
     }
 
 

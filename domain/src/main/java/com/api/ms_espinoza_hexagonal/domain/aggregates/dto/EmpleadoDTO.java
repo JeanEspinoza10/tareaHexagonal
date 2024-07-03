@@ -9,7 +9,6 @@ import java.sql.Timestamp;
 @Setter
 
 public class EmpleadoDTO {
-    private Long idPersona;
     private String nombre;
     private String apellido;
     private int edad;
